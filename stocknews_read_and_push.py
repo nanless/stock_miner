@@ -61,18 +61,18 @@ async def fetch_and_process_news_feed(crawler, history_news, url):
             valuable = (impact >= 4 and sentiment >= 4) or (impact >= 2 and sentiment >= 5) or (impact >= 5 and sentiment >= 2)
 
             if valuable and news_key not in history_news:
-                # messages = [
-                #     {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
-                #     {"role": "user", "content": "Translate this news into Chinese: " + title}
-                # ]
-                # text = tokenizer.apply_chat_template(
-                #     messages,
-                #     tokenize=False,
-                #     add_generation_prompt=True
-                # )
-                # model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-                text = f"Translate this news into Chinese: {title}"
+                messages = [
+                    {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
+                    {"role": "user", "content": "Translate this title into Chinese, return only the translated text, discard all other texts: " + title}
+                ]
+                text = tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True
+                )
                 model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+                # text = f"Translate this news into Chinese: {title}"
+                # model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
                 generated_ids = model.generate(**model_inputs, max_new_tokens=1024)
                 response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
@@ -151,18 +151,18 @@ async def fetch_and_process_news_today(crawler, history_news, url):
             valuable = (impact >= 4 and sentiment >= 4) or (impact >= 2 and sentiment >= 5) or (impact >= 5 and sentiment >= 2)
 
             if valuable and news_key not in history_news:
-                # messages = [
-                #     {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
-                #     {"role": "user", "content": "Translate this news into Chinese: " + title}
-                # ]
-                # text = tokenizer.apply_chat_template(
-                #     messages,
-                #     tokenize=False,
-                #     add_generation_prompt=True
-                # )
-                # model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-                text = f"Translate this news into Chinese: {title}"
+                messages = [
+                    {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
+                    {"role": "user", "content": "Translate this title into Chinese, return only the translated text, discard all other texts: " + title}
+                ]
+                text = tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True
+                )
                 model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+                # text = f"Translate this news into Chinese: {title}"
+                # model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
                 generated_ids = model.generate(**model_inputs, max_new_tokens=1024)
                 response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
@@ -235,18 +235,18 @@ async def fetch_and_process_news_trending(crawler, history_news, url):
 
             # print(f"processing news trending: {news_key} - {title} - {link} - {time_info} - {impact} - {sentiment}")
             if news_key not in history_news:
-                # messages = [
-                #     {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
-                #     {"role": "user", "content": "Translate this news into Chinese: " + title}
-                # ]
-                # text = tokenizer.apply_chat_template(
-                #     messages,
-                #     tokenize=False,
-                #     add_generation_prompt=True
-                # )
-                # model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-                text = f"Translate this news into Chinese: {title}"
+                messages = [
+                    {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
+                    {"role": "user", "content": "Translate this title into Chinese, return only the translated text, discard all other texts: " + title}
+                ]
+                text = tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True
+                )
                 model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+                # text = f"Translate this news into Chinese: {title}"
+                # model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
 
                 generated_ids = model.generate(**model_inputs, max_new_tokens=1024)
