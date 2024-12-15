@@ -8,7 +8,7 @@ import random
 import time
 
 workdir = "./stock_push"
-model_name = "Qwen/Qwen2.5-7B-Instruct"
+model_name = "Qwen/Qwen2.5-7B-Instruct-AWQ"
 history_file = f"{workdir}/history_news.txt"
 markdowntext_file = f"{workdir}/news.md"
 
@@ -61,15 +61,17 @@ async def fetch_and_process_news_feed(crawler, history_news, url):
             valuable = (impact >= 4 and sentiment >= 4) or (impact >= 2 and sentiment >= 5) or (impact >= 5 and sentiment >= 2)
 
             if valuable and news_key not in history_news:
-                messages = [
-                    {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
-                    {"role": "user", "content": "Translate this news into Chinese: " + title}
-                ]
-                text = tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=False,
-                    add_generation_prompt=True
-                )
+                # messages = [
+                #     {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
+                #     {"role": "user", "content": "Translate this news into Chinese: " + title}
+                # ]
+                # text = tokenizer.apply_chat_template(
+                #     messages,
+                #     tokenize=False,
+                #     add_generation_prompt=True
+                # )
+                # model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+                text = f"Translate this news into Chinese: {title}"
                 model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
                 generated_ids = model.generate(**model_inputs, max_new_tokens=1024)
@@ -77,8 +79,14 @@ async def fetch_and_process_news_feed(crawler, history_news, url):
                 translated_title = response.strip()
 
                 current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-                news_info = f"当前时间：{current_time}\n公司代码：{symbol}\n新闻事件：{time_info}\n新闻标题：{translated_title}\n新闻链接：{link}\n影响力：{impact}\n情感倾向：{sentiment}"
-                markdowntext = f"|![{symbol}]({logo}) | {symbol} | {translated_title} | [点击查看]({link}) | {exchange} | {date} {time_info} | {impact} | {sentiment} |\n"
+                # news_info = f"当前时间：{current_time}\n公司代码：{symbol}\n新闻事件：{time_info}\n新闻标题：{translated_title}\n新闻链接：{link}\n影响力：{impact}\n情感倾向：{sentiment}"
+                # markdowntext = f"|![{symbol}]({logo}) | {symbol} | {translated_title} | [点击查看]({link}) | {exchange} | {date} {time_info} | {impact} | {sentiment} |\n"
+                # 更新新闻信息的显示格式
+                news_info = f"当前时间：{current_time}\n公司代码：{symbol}\n新闻事件：{time_info}\n新闻标题（英文）：{title}\n新闻标题（中文）：{translated_title}\n新闻链接：{link}\n影响力：{impact}\n情感倾向：{sentiment}"
+
+                # 更新markdown的展示格式
+                markdowntext = f"|![{symbol}]({logo}) | {symbol} | {title} (EN) | {translated_title} (CN) | [点击查看]({link}) | {exchange} | {time_info} | {impact} | {sentiment} |\n"
+
 
                 with open(markdowntext_file, "a", encoding="utf-8") as f:
                     f.write(markdowntext)
@@ -143,15 +151,17 @@ async def fetch_and_process_news_today(crawler, history_news, url):
             valuable = (impact >= 4 and sentiment >= 4) or (impact >= 2 and sentiment >= 5) or (impact >= 5 and sentiment >= 2)
 
             if valuable and news_key not in history_news:
-                messages = [
-                    {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
-                    {"role": "user", "content": "Translate this news into Chinese: " + title}
-                ]
-                text = tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=False,
-                    add_generation_prompt=True
-                )
+                # messages = [
+                #     {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
+                #     {"role": "user", "content": "Translate this news into Chinese: " + title}
+                # ]
+                # text = tokenizer.apply_chat_template(
+                #     messages,
+                #     tokenize=False,
+                #     add_generation_prompt=True
+                # )
+                # model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+                text = f"Translate this news into Chinese: {title}"
                 model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
                 generated_ids = model.generate(**model_inputs, max_new_tokens=1024)
@@ -159,9 +169,14 @@ async def fetch_and_process_news_today(crawler, history_news, url):
                 translated_title = response.strip()
 
                 current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-                news_info = f"当前时间：{current_time}\n公司代码：{symbol}\n新闻事件：{time_info}\n新闻标题：{translated_title}\n新闻链接：{link}\n影响力：{impact}\n情感倾向：{sentiment}"
-                markdowntext = f"|![{symbol}]({logo}) | {symbol} | {translated_title} | [点击查看]({link}) | {exchange_elem} | {time_info} | {impact} | {sentiment} |\n"
+                # news_info = f"当前时间：{current_time}\n公司代码：{symbol}\n新闻事件：{time_info}\n新闻标题：{translated_title}\n新闻链接：{link}\n影响力：{impact}\n情感倾向：{sentiment}"
+                # markdowntext = f"|![{symbol}]({logo}) | {symbol} | {translated_title} | [点击查看]({link}) | {exchange_elem} | {time_info} | {impact} | {sentiment} |\n"
+                # 更新新闻信息的显示格式
+                news_info = f"当前时间：{current_time}\n公司代码：{symbol}\n新闻事件：{time_info}\n新闻标题（英文）：{title}\n新闻标题（中文）：{translated_title}\n新闻链接：{link}\n影响力：{impact}\n情感倾向：{sentiment}"
 
+                # 更新markdown的展示格式
+                markdowntext = f"|![{symbol}]({logo}) | {symbol} | {title} (EN) | {translated_title} (CN) | [点击查看]({link}) | {exchange_elem} | {time_info} | {impact} | {sentiment} |\n"
+                
                 with open(markdowntext_file, "a", encoding="utf-8") as f:
                     f.write(markdowntext)
                 with open(history_file, "a", encoding="utf-8") as f:
@@ -220,24 +235,33 @@ async def fetch_and_process_news_trending(crawler, history_news, url):
 
             # print(f"processing news trending: {news_key} - {title} - {link} - {time_info} - {impact} - {sentiment}")
             if news_key not in history_news:
-                messages = [
-                    {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
-                    {"role": "user", "content": "Translate this news into Chinese: " + title}
-                ]
-                text = tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=False,
-                    add_generation_prompt=True
-                )
+                # messages = [
+                #     {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
+                #     {"role": "user", "content": "Translate this news into Chinese: " + title}
+                # ]
+                # text = tokenizer.apply_chat_template(
+                #     messages,
+                #     tokenize=False,
+                #     add_generation_prompt=True
+                # )
+                # model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+                text = f"Translate this news into Chinese: {title}"
                 model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+
 
                 generated_ids = model.generate(**model_inputs, max_new_tokens=1024)
                 response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
                 translated_title = response.strip()
 
                 current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-                news_info = f"当前时间：{current_time}\n公司代码：{symbol}\n新闻事件：{time_info}\n新闻标题：{translated_title}\n新闻链接：{link}\n影响力：{impact}\n情感倾向：{sentiment}"
-                markdowntext = f"|![{symbol}]({logo}) | {symbol} | {translated_title} | [点击查看]({link}) | {exchange} | {time_info} | {impact} | {sentiment} |\n"
+                # news_info = f"当前时间：{current_time}\n公司代码：{symbol}\n新闻事件：{time_info}\n新闻标题：{translated_title}\n新闻链接：{link}\n影响力：{impact}\n情感倾向：{sentiment}"
+                # markdowntext = f"|![{symbol}]({logo}) | {symbol} | {translated_title} | [点击查看]({link}) | {exchange} | {time_info} | {impact} | {sentiment} |\n"
+                # 更新新闻信息的显示格式
+                news_info = f"当前时间：{current_time}\n公司代码：{symbol}\n新闻事件：{time_info}\n新闻标题（英文）：{title}\n新闻标题（中文）：{translated_title}\n新闻链接：{link}\n影响力：{impact}\n情感倾向：{sentiment}"
+
+                # 更新markdown的展示格式
+                markdowntext = f"|![{symbol}]({logo}) | {symbol} | {title} (EN) | {translated_title} (CN) | [点击查看]({link}) | {exchange} | {time_info} | {impact} | {sentiment} |\n"
+
 
                 with open(markdowntext_file, "a", encoding="utf-8") as f:
                     f.write(markdowntext)
@@ -258,8 +282,8 @@ async def main():
     except FileNotFoundError:
         pass
 
-    markdowntext = "| 公司标志 | 公司代码 | 新闻标题 | 新闻链接 | 交易所 | 时间 | 影响 | 情感倾向 |\n"
-    markdowntext += "| --- | --- | --- | --- | --- | --- | --- | --- |\n"
+    markdowntext = "| 公司标志 | 公司代码 | 新闻标题 (EN ) | 新闻标题 (CN ) | 新闻链接 | 交易所 | 时间 | 影响 | 情感倾向 |\n"
+    markdowntext += "| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
     with open(markdowntext_file, "w", encoding="utf-8") as f:
         f.write(markdowntext)
 

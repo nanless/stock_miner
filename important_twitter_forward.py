@@ -9,7 +9,17 @@ import aiohttp
 webhook_url = "https://open.feishu.cn/open-apis/bot/v2/hook/b5fa30f9-e0d1-42d5-88ba-a943030992c6"
 
 # 定义要爬取的X (Twitter)博主用户名
-target_usernames = ["myfxtrader", "tzwqbest", "GlobalMoneyAI", "AsiaFinance", "OldK_Gillis", "qinbafrank", "xlh1238899", "guyisheng1", "telebi7", "caijingshujuku", "hhuang", "zeyu_kap", "bboczeng", "zebrahelps", "angel71911", "yanbojack", "turingou", "Awsomefo", "ANDREW_FDWT", "ngw888", "HitAshareLimit", "BFBSHCD", "realwuzhe", "cnfinancewatch", "zhaocaishijie", "hungjng69679118", "dacefupan", "__Inty__", "andy_sharks", "DogutOscar", "x001fx", "cnAspeculation", "Hoyooyoo", "hongsv11", "ShanghaoJin", "yiguxia", "yamato812536", "tychozzz", "caolei1", "Vson0903", "benjman89"]
+target_usernames = ["myfxtrader", "tzwqbest", "GlobalMoneyAI", "AsiaFinance", "OldK_Gillis", "qinbafrank", 
+                    "xlh1238899", "guyisheng1", "telebi7", "caijingshujuku", "hhuang", "zeyu_kap", "bboczeng", 
+                    "zebrahelps", "angel71911", "yanbojack", "turingou", "Awsomefo", "ANDREW_FDWT", "ngw888", 
+                    "HitAshareLimit", "BFBSHCD", "realwuzhe", "cnfinancewatch", "zhaocaishijie", "hungjng69679118", 
+                    "dacefupan", "__Inty__", "andy_sharks", "DogutOscar", "x001fx", "cnAspeculation", "Hoyooyoo", 
+                    "hongsv11", "ShanghaoJin", "yiguxia", "yamato812536", "tychozzz", "caolei1", "Vson0903", 
+                    "benjman89", "dmjk001", "Rumoreconomy", "liqiang365", "dacejiangu", "frost_jazmyn", 
+                    "TJ_Research01", "QihongF44102", "SupFin", "yangskyfly", "Capitalpedia", "hybooospx", 
+                    "91grok", "financehybooo", "yangcy199510182", "business", "economics", "BloombergAsia", 
+                    "markets", "stocktalkweekly", "MonkEchevarria", "ThetaWarrior", "MacroMargin", "hybooonews",
+                    "TradingThomas3", "WSJ", "TheTranscript_", "Tesla_Cybercat", "BilingualReader", "The_RockTrading"]
 target_urls = {username: f"https://x.com/{username}" for username in target_usernames}
 
 # X 登录信息
@@ -74,10 +84,10 @@ async def login_if_needed(page):
     # 输入用户名和密码
     await page.fill("input[name='text']", X_USERNAME)
     await page.click("button:has-text('Next')")
-    await asyncio.sleep(2)
+    await asyncio.sleep(5)
     await page.fill("input[name='text']", X_USERID)
     await page.click("button:has-text('Next')")
-    await asyncio.sleep(2)
+    await asyncio.sleep(5)
     await page.fill("input[name='password']", X_PASSWORD)
     await page.click("button:has-text('Log in')")
 
@@ -89,7 +99,7 @@ async def login_if_needed(page):
 
 async def get_tweets(page, username, url):
     await page.goto(url)
-    await page.wait_for_selector("article", timeout=10000)
+    await page.wait_for_selector("article", timeout=15000)
 
     tweets = []
     articles = await page.query_selector_all("article")
@@ -113,11 +123,15 @@ async def main():
 
         await login_if_needed(page)
         for username, url in target_urls.items():
-            new_tweets = await get_tweets(page, username, url)
-            for tweet_text, tweet_url, tweet_id in new_tweets:
-                await send_to_feishu(tweet_text, tweet_url, username)
-                sent_tweet_ids.add(tweet_id)
-                save_sent_tweet_ids(sent_tweet_ids)
+            try:
+                new_tweets = await get_tweets(page, username, url)
+                for tweet_text, tweet_url, tweet_id in new_tweets:
+                    await send_to_feishu(tweet_text, tweet_url, username)
+                    sent_tweet_ids.add(tweet_id)
+                    save_sent_tweet_ids(sent_tweet_ids)
+            except Exception as e:
+                current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                print(f"{current_time} 发生错误: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
