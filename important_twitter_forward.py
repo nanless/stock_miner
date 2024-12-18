@@ -86,7 +86,7 @@ async def send_to_feishu(tweet_text, tweet_url, username):
                     "title": f"{username} 的最新推文",
                     "content": [
                         [
-                            {"tag": "text", "text": "原文: " + tweet_text + "\n" + "译文: " + translated_text},
+                            {"tag": "text", "text": "原文:\n" + tweet_text + "\n" + "译文:\n" + translated_text},
                             {"tag": "a", "text": "查看原文", "href": tweet_url}
                         ],
                     ]
