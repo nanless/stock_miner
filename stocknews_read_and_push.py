@@ -25,6 +25,10 @@ check_conditions = [
     "14. It is related to the FDA.",
     "15. It is related to the Department of Energy.",
     "16. It is related to Elon Musk."
+    "17. It is related to Artificial Intelligence.",
+    "18. It is related to quantum technology.",
+    "19. It is related to the Chinese government.",
+    "20. It is related to nuclear energy."
 ]
 
 check_message = ", ".join(check_conditions)
