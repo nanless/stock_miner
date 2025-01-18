@@ -24,8 +24,7 @@ target_usernames = ["myfxtrader", "tzwqbest", "GlobalMoneyAI", "AsiaFinance", "O
                     "TradingThomas3", "WSJ", "TheTranscript_", "Tesla_Cybercat", "BilingualReader", "The_RockTrading",
                     "realDonaldTrump", "elonmusk", "SpaceX", "joely7758521", "techeconomyana", "jiu_sunny",
                     "wakk94748769", "WSTAnalystApe", "theinformation", "3000upup", "tradehybooo", "hyboootrade",
-                    "yuyy614893671", "JamesLt196801", "DrJStrategy", "z0072024", "YeMuXinTu", "Starlink", "IvyUnclestock",
-                    "Jukanlosreve", "lianyanshe"]
+                    "yuyy614893671", "JamesLt196801", "DrJStrategy", "z0072024", "YeMuXinTu", "Starlink", "IvyUnclestock", "yuexiaoyu111", "Jukanlosreve", "lianyanshe"]
 target_urls = {username: f"http://localhost:1200/twitter/user/{username}" for username in target_usernames}
 sent_tweets_file = "twitter_push/sent_tweets.json"
 model_name = "Qwen/Qwen2.5-7B-Instruct-AWQ"
