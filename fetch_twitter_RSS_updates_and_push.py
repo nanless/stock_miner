@@ -10,21 +10,22 @@ import feedparser
 import requests
 
 # --- 配置 ---
-webhook_url = "https://open.feishu.cn/open-apis/bot/v2/hook/f97028b8-d693-4c23-989b-639a68807e2d"
+# webhook_url = "https://open.feishu.cn/open-apis/bot/v2/hook/f97028b8-d693-4c23-989b-639a68807e2d"
+webhook_url = "https://open.feishu.cn/open-apis/bot/v2/hook/b5fa30f9-e0d1-42d5-88ba-a943030992c6"
 target_usernames = ["myfxtrader", "tzwqbest", "GlobalMoneyAI", "AsiaFinance", "OldK_Gillis", "qinbafrank", 
                     "xlh1238899", "guyisheng1", "telebi7", "caijingshujuku", "hhuang", "zeyu_kap", "bboczeng", 
                     "zebrahelps", "angel71911", "yanbojack", "turingou", "ANDREW_FDWT", "ngw888", 
                     "HitAshareLimit", "BFBSHCD", "realwuzhe", "cnfinancewatch", "zhaocaishijie", "hungjng69679118", 
-                    "dacefupan", "__Inty__", "andy_sharks", "DogutOscar", "x001fx", "Reuters", "Hoyooyoo", 
+                    "dacefupan", "__Inty__", "andy_sharks", "DogutOscar", "x001fx", "Hoyooyoo", 
                     "hongsv11", "ShanghaoJin", "yiguxia", "yamato812536", "tychozzz", "caolei1", "Vson0903", 
                     "benjman89", "dmjk001", "Rumoreconomy", "liqiang365", "dacejiangu", "frost_jazmyn", 
                     "TJ_Research01", "QihongF44102", "SupFin", "yangskyfly", "Capitalpedia", "hybooospx", 
-                    "91grok", "financehybooo", "yangcy199510182", "business", "economics", "BloombergAsia", 
-                    "markets", "stocktalkweekly", "MonkEchevarria", "ThetaWarrior", "MacroMargin", "hybooonews",
+                    "91grok", "financehybooo", "yangcy199510182", "stocktalkweekly", "MonkEchevarria", "ThetaWarrior", "MacroMargin", "hybooonews",
                     "TradingThomas3", "WSJ", "TheTranscript_", "Tesla_Cybercat", "BilingualReader", "The_RockTrading",
-                    "realDonaldTrump", "elonmusk", "SpaceX", "WSJmarkets", "joely7758521", "techeconomyana", "jiu_sunny",
+                    "realDonaldTrump", "elonmusk", "SpaceX", "joely7758521", "techeconomyana", "jiu_sunny",
                     "wakk94748769", "WSTAnalystApe", "theinformation", "3000upup", "tradehybooo", "hyboootrade",
-                    "yuyy614893671", "JamesLt196801", "DrJStrategy", "z0072024", "YeMuXinTu", "Starlink", "IvyUnclestock"]
+                    "yuyy614893671", "JamesLt196801", "DrJStrategy", "z0072024", "YeMuXinTu", "Starlink", "IvyUnclestock",
+                    "Jukanlosreve", "lianyanshe"]
 target_urls = {username: f"http://localhost:1200/twitter/user/{username}" for username in target_usernames}
 sent_tweets_file = "twitter_push/sent_tweets.json"
 model_name = "Qwen/Qwen2.5-7B-Instruct-AWQ"
@@ -172,7 +173,7 @@ async def main():
         save_sent_tweet_ids(sent_tweet_ids)
 
         # 在1-2小时之间随机选择睡眠时间
-        sleep_time = random.uniform(3600, 7200)  # 3600秒 = 1小时, 7200秒 = 2小时
+        sleep_time = random.uniform(1800, 3600)  # 3600秒 = 1小时, 7200秒 = 2小时
         print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} 睡眠 {sleep_time:.2f} 秒...")
         await asyncio.sleep(sleep_time)
 

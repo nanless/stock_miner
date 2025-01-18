@@ -4,34 +4,24 @@ import feedparser
 import time
 from datetime import datetime
 import json
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
-# Bloomberg RSSHub地址
+
+# RSSHub地址
 rsshub_urls = [
-    "http://192.168.71.60:1200/bloomberg",
-    "http://192.168.71.60:1200/bloomberg/bbiz",
-    "http://192.168.71.60:1200/bloomberg/bpol",
-    "http://192.168.71.60:1200/bloomberg/markets",
-    "http://192.168.71.60:1200/bloomberg/technology"
+    "http://localhost:1200/caixin/database",
+    "http://localhost:1200/caixin/k",
+    "http://localhost:1200/caixin/article",
+    "http://localhost:1200/yicai/dt/article",
+    "http://localhost:1200/xueqiu/hots",
+    "http://localhost:1200/10jqka/realtimenews",
+    "http://localhost:1200/jrj/103"
 ]
 
 # 飞书webhook地址
-webhook_url = "https://open.feishu.cn/open-apis/bot/v2/hook/4151bf5e-8b82-4e9a-84f8-6dca5e299c5c"
+webhook_url = "https://open.feishu.cn/open-apis/bot/v2/hook/a233f3b9-3b17-4e62-82cd-d8c7b4bac301"
 
 # 用于存储已发送的文章ID
-sent_ids_file = "bloomberg_push/sent_ids.json"
-
-model_name = "Qwen/Qwen2.5-7B-Instruct-AWQ"
-cache_dir = '/home/kemove/.cache/huggingface/hub'
-
-# 加载qwen模型及分词器
-model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    torch_dtype="auto",
-    device_map="auto",
-    cache_dir=cache_dir
-)
-tokenizer = AutoTokenizer.from_pretrained(model_name)
+sent_ids_file = "36kr_push/sent_ids.json"
 
 # 加载已发送的文章ID
 def load_sent_ids():
@@ -49,26 +39,15 @@ def save_sent_ids(ids):
 sent_ids = load_sent_ids()
 
 async def send_to_feishu(session, title, link, timestamp, source):
-    messages = [
-        {"role": "system", "content": "You are Qwen, a great reader and translator!"},
-        {"role": "user", "content": "Translate this into Chinese, return only the translated text: " + title}
-    ]
-    text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-    generated_ids = model.generate(**model_inputs, max_new_tokens=512)
-    generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
-    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-    translated_title = response.strip()
     message = {
         "msg_type": "post",
         "content": {
             "post": {
                 "zh_cn": {
-                    "title": f"Bloomberg资讯 {timestamp} - {source}",
+                    "title": f"财经资讯 {timestamp} - {source}",
                     "content": [
                         [
                             {"tag": "text", "text": f"{title}\n"},
-                            {"tag": "text", "text": f"译文: {translated_title}\n"},
                             {"tag": "a", "text": "阅读原文", "href": link}
                         ]
                     ]
@@ -91,18 +70,17 @@ async def check_updates(session, url):
         async with session.get(url) as response:
             content = await response.text()
             feed = feedparser.parse(content)
+            # import pdb; pdb.set_trace()
             
-            source = url.split("/")[-1]  # 从URL中提取源名称
+            source = url.split  # 从URL中提取源名称
             
             for entry in feed.entries:
                 entry_id = entry.id if hasattr(entry, 'id') else entry.link
-                print("----------------------------------------------------------------------------------------------------")
-                for key, value in entry.items():
-                    print(f"{key}: {value}")
                 if entry_id not in sent_ids:
                     await send_to_feishu(session, entry.title, entry.link, time.strftime("%Y-%m-%d %H:%M:%S", entry.published_parsed), source)
                     sent_ids.add(entry_id)
-                    await asyncio.sleep(1)  # 休眠1秒，防止频繁发送
+                    ## 休眠1秒，防止频繁发送
+                    await asyncio.sleep(1)
                     
     except Exception as e:
         print(f"{datetime.now()}: 检查更新时发生错误: {e}")
