@@ -4,7 +4,7 @@ import feedparser
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # 请将此处的 URL 替换为您实际的飞书机器人 Webhook 地址
-FEISHU_WEBHOOK = "https://open.feishu.cn/open-apis/bot/v2/hook/862de1b9-dc6c-4d1d-b22f-b43d493e0db4"
+FEISHU_WEBHOOK = "https://open.feishu.cn/open-apis/bot/v2/hook/8e718ac2-e3dd-4125-b11b-f981961c5135"
 
 # 用于存储已处理文章的文件路径
 PROCESSED_FILE = "arxiv_push/processed_ids.txt"
@@ -111,10 +111,12 @@ def check_arxiv_updates():
         article_id = article.id
         title = article.title.strip() if hasattr(article, "title") else "无标题"
         abstract = article.summary.strip() if hasattr(article, "summary") else "无摘要"
+        authors = ", ".join([author.name for author in article.authors]) if hasattr(article, "authors") else "未知作者"
         pdf_url = get_pdf_url(article_id)
         # 翻译摘要为中文
         title_cn = translate_to_chinese(title)
         abstract_cn = translate_to_chinese(abstract)
+        authors_cn = translate_to_chinese(authors)
         # 获取文档的更新时间
         updated_time = article.updated if hasattr(article, "updated") else "未知时间"
 
@@ -122,6 +124,8 @@ def check_arxiv_updates():
             f"文档更新时间：{updated_time}\n"
             f"标题：{title}\n"
             f"标题(中文)：{title_cn}\n"
+            f"作者：{authors}\n"
+            f"作者(中文)：{authors_cn}\n"
             f"PDF链接：{pdf_url}\n\n"
             f"摘要：\n{abstract}\n\n"
             f"摘要(中文)：\n{abstract_cn}"
@@ -139,8 +143,8 @@ def main():
     while True:
         print("开始检查 arXiv 更新……")
         check_arxiv_updates()
-        print("检查完成，休眠12小时。")
-        time.sleep(3600 * 12)  # 每隔12小时执行一次
+        print("检查完成，休眠6小时。")
+        time.sleep(3600 * 6)  # 每隔6小时执行一次
 
 if __name__ == "__main__":
     main()
