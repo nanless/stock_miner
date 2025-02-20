@@ -24,10 +24,11 @@ target_usernames = ["myfxtrader", "tzwqbest", "GlobalMoneyAI", "AsiaFinance", "O
                     "realDonaldTrump", "elonmusk", "SpaceX", "joely7758521", "techeconomyana", "jiu_sunny",
                     "wakk94748769", "WSTAnalystApe", "theinformation", "3000upup", "tradehybooo", "hyboootrade",
                     "yuyy614893671", "JamesLt196801", "DrJStrategy", "z0072024", "YeMuXinTu", "Starlink", "IvyUnclestock", "yuexiaoyu111", 
-                    "Jukanlosreve", "lianyanshe", "hiCaptainZ", "PallasCatFin", "AntonLaVay"]
+                    "Jukanlosreve", "lianyanshe", "hiCaptainZ", "PallasCatFin", "AntonLaVay", "shijh96", "mvcinvesting"]
 sent_tweets_file = "twikit_push/sent_tweets.json"
 model_name = "Qwen/Qwen2.5-7B-Instruct-AWQ"
 cache_dir = '/home/kemove/.cache/huggingface/hub'
+num_parts = 2  # 可以改为4或其他值，用于指定 target_usernames 分成的份数
 # --- 配置结束 ---
 
 # 全局变量
@@ -42,6 +43,18 @@ model = AutoModelForCausalLM.from_pretrained(
 )
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
+# 将列表分成指定份数的函数
+def split_list(lst, num_parts):
+    chunk_size = len(lst) // num_parts
+    remainder = len(lst) % num_parts
+    parts = []
+    start = 0
+    for i in range(num_parts):
+        end = start + chunk_size + (1 if i < remainder else 0)
+        parts.append(lst[start:end])
+        start = end
+    return parts
+
 def load_sent_tweet_ids():
     try:
         with open(sent_tweets_file, "r") as f:
@@ -54,7 +67,6 @@ def save_sent_tweet_ids(ids):
         json.dump(list(ids), f)
 
 async def send_to_feishu(tweet_text, tweet_url, author, formatted_time):
-    # formatted_time = time.strftime("%Y-%m-%d %H:%M:%S", timestamp)
     messages = [
         {"role": "system", "content": "You are Qwen, a great reader and translator!"},
         {"role": "user", "content": "Is this message in English or other non-Chinese language? Return only yes or no, discard any other text: " + tweet_text}
@@ -64,7 +76,6 @@ async def send_to_feishu(tweet_text, tweet_url, author, formatted_time):
     generated_ids = model.generate(**model_inputs, max_new_tokens=512)
     generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
     response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-    ##只保留英文文字
     response = ''.join(filter(str.isalpha, response))
     if response.lower() == "yes":
         messages = [
@@ -134,11 +145,8 @@ async def process_twitter_user_updates(client, username):
             if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
                 dt = dt.replace(tzinfo=timezone('UTC'))
 
-            # 转换为上海时区
             shanghai_tz = timezone('Asia/Shanghai')
             shanghai_time = dt.astimezone(shanghai_tz)
-
-            # 格式化输出为易读的格式
             tweet_timestamp = shanghai_time.strftime('%Y年%m月%d日 %H:%M:%S')
             tweet_id = username + '_' + str(tweet.id)
 
@@ -155,6 +163,10 @@ async def main():
     global sent_tweet_ids
     sent_tweet_ids = load_sent_tweet_ids()
 
+    # 将 target_usernames 分成 num_parts 份
+    username_parts = split_list(target_usernames, num_parts)
+    cycle_count = 0
+
     while True:
         client = Client('en-US', proxy="http://127.0.0.1:7890")
         await client.login(
@@ -164,14 +176,22 @@ async def main():
             cookies_file='twikit_push/cookies.json'
         )
 
-        for username in target_usernames:
+        # 选择当前循环处理的子列表
+        current_part_index = cycle_count % num_parts
+        current_part = username_parts[current_part_index]
+        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} 开始处理第 {current_part_index} 部分的用户...")
+
+        # 只处理当前子列表中的用户名
+        for username in current_part:
             await process_twitter_user_updates(client, username)
             await asyncio.sleep(random.randint(1, 10))
-        
-        save_sent_tweet_ids(sent_tweet_ids)
 
-        # 在1-2小时之间随机选择睡眠时间
-        sleep_time = random.randint(3600, 7200)  # 3600秒 = 1小时, 7200秒 = 2小时
+        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} 完成第 {current_part_index} 部分的用户处理...")
+        save_sent_tweet_ids(sent_tweet_ids)
+        cycle_count += 1
+
+        # 在2400s-3600s之间随机选择睡眠时间
+        sleep_time = random.randint(2400, 3600)  # 3600秒 = 1小时, 7200秒 = 2小时
         print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} 睡眠 {sleep_time:.2f} 秒...")
         await asyncio.sleep(sleep_time)
 
