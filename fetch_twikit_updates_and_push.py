@@ -3,20 +3,15 @@ import json
 import time
 import random
 from datetime import datetime
-from transformers import AutoModelForCausalLM, AutoTokenizer
 from twikit import Client
 import aiohttp
 from dateutil import parser
 from pytz import timezone
+import os
 
 # --- 配置 ---
 webhook_url = "https://open.feishu.cn/open-apis/bot/v2/hook/b5fa30f9-e0d1-42d5-88ba-a943030992c6"
-target_usernames = ["myfxtrader", "tzwqbest", "GlobalMoneyAI", "AsiaFinance", "OldK_Gillis", "qinbafrank", 
-                    "xlh1238899", "guyisheng1", "telebi7", "caijingshujuku", "hhuang", "zeyu_kap", "bboczeng", 
-                    "zebrahelps", "angel71911", "yanbojack", "turingou", "ANDREW_FDWT", "ngw888",
-                    "HitAshareLimit", "BFBSHCD", "realwuzhe", "cnfinancewatch", "zhaocaishijie", "hungjng69679118", 
-                    "dacefupan", "__Inty__", "andy_sharks", "DogutOscar", "x001fx", "Hoyooyoo", 
-                    "hongsv11", "ShanghaoJin", "yiguxia", "yamato812536", "tychozzz", "caolei1", "Vson0903", 
+target_usernames = ["tychozzz", "caolei1", "Vson0903", 
                     "benjman89", "dmjk001", "Rumoreconomy", "liqiang365", "dacejiangu", "frost_jazmyn", 
                     "TJ_Research01", "QihongF44102", "SupFin", "yangskyfly", "Capitalpedia", "hybooospx", 
                     "91grok", "financehybooo", "yangcy199510182", "stocktalkweekly", "MonkEchevarria", "ThetaWarrior", "MacroMargin",
@@ -24,24 +19,21 @@ target_usernames = ["myfxtrader", "tzwqbest", "GlobalMoneyAI", "AsiaFinance", "O
                     "realDonaldTrump", "elonmusk", "SpaceX", "joely7758521", "techeconomyana", "jiu_sunny",
                     "wakk94748769", "WSTAnalystApe", "theinformation", "3000upup", "tradehybooo", "hyboootrade",
                     "yuyy614893671", "JamesLt196801", "DrJStrategy", "z0072024", "YeMuXinTu", "Starlink", "IvyUnclestock", "yuexiaoyu111", 
-                    "Jukanlosreve", "lianyanshe", "hiCaptainZ", "PallasCatFin", "AntonLaVay", "shijh96", "mvcinvesting"]
+                    "Jukanlosreve", "lianyanshe", "hiCaptainZ", "PallasCatFin", "AntonLaVay", "shijh96", "mvcinvesting", "D_K_Rajasekar",
+                    "David_yc607", "arbujiujiu", "myfxtrader", "tzwqbest", "GlobalMoneyAI", "AsiaFinance", "OldK_Gillis", "qinbafrank", 
+                    "xlh1238899", "guyisheng1", "telebi7", "caijingshujuku", "hhuang", "zeyu_kap", "bboczeng", 
+                    "zebrahelps", "angel71911", "yanbojack", "turingou", "ANDREW_FDWT", "ngw888",
+                    "HitAshareLimit", "BFBSHCD", "realwuzhe", "cnfinancewatch", "zhaocaishijie", "hungjng69679118", 
+                    "dacefupan", "__Inty__", "andy_sharks", "DogutOscar", "x001fx", "Hoyooyoo", 
+                    "hongsv11", "ShanghaoJin", "yiguxia", "yamato812536"]
 sent_tweets_file = "twikit_push/sent_tweets.json"
-model_name = "Qwen/Qwen2.5-7B-Instruct-AWQ"
-cache_dir = '/home/kemove/.cache/huggingface/hub'
-num_parts = 2  # 可以改为4或其他值，用于指定 target_usernames 分成的份数
+ollama_api_url = "http://localhost:11434/api/chat"  # Ollama API地址
+ollama_model = "qwen2.5:14b"  # Ollama中的模型名称
+num_parts = 1  # 可以改为4或其他值，用于指定 target_usernames 分成的份数
 # --- 配置结束 ---
 
 # 全局变量
 sent_tweet_ids = set()
-
-# 加载qwen模型及分词器
-model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    torch_dtype="auto",
-    device_map="auto",
-    cache_dir=cache_dir
-)
-tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 # 将列表分成指定份数的函数
 def split_list(lst, num_parts):
@@ -66,28 +58,41 @@ def save_sent_tweet_ids(ids):
     with open(sent_tweets_file, "w") as f:
         json.dump(list(ids), f)
 
+async def query_ollama(messages):
+    """调用Ollama API进行文本生成"""
+    payload = {
+        "model": ollama_model,
+        "messages": messages,
+        "stream": False
+    }
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(ollama_api_url, json=payload) as response:
+            if response.status == 200:
+                result = await response.json()
+                return result["message"]["content"]
+            else:
+                error_text = await response.text()
+                raise Exception(f"Ollama API调用失败: {response.status}, {error_text}")
+
 async def send_to_feishu(tweet_text, tweet_url, author, formatted_time):
+    # 检查是否为英文或其他非中文语言
     messages = [
         {"role": "system", "content": "You are Qwen, a great reader and translator!"},
         {"role": "user", "content": "Is this message in English or other non-Chinese language? Return only yes or no, discard any other text: " + tweet_text}
     ]
-    text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-    generated_ids = model.generate(**model_inputs, max_new_tokens=512)
-    generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
-    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+    
+    response = await query_ollama(messages)
     response = ''.join(filter(str.isalpha, response))
+    
     if response.lower() == "yes":
+        # 翻译推文
         messages = [
             {"role": "system", "content": "You are Qwen, a great reader and translator!"},
             {"role": "user", "content": "Translate this tweet into Chinese, return only the translated text: " + tweet_text}
         ]
-        text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-        generated_ids = model.generate(**model_inputs, max_new_tokens=512)
-        generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
-        response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        translated_text = response.strip()
+        
+        translated_text = await query_ollama(messages)
 
         message = {
             "msg_type": "post",
@@ -170,11 +175,14 @@ async def main():
     while True:
         client = Client('en-US', proxy="http://127.0.0.1:7890")
         await client.login(
-            auth_info_1='yoyo21693388475',
-            auth_info_2='iamyourfather20250215@proton.me',
-            password='iamyour88',
-            cookies_file='twikit_push/cookies.json'
+            auth_info_1='YanzuXiu',
+            auth_info_2='francis7999@outlook.com',
+            password='T:b3chA3pjfyvQT',
+            cookies_file='twikit_cookies.json'
         )
+
+        if not os.path.exists('twikit_cookies.json'):
+            client.save_cookies('twikit_cookies.json')
 
         # 选择当前循环处理的子列表
         current_part_index = cycle_count % num_parts
@@ -184,14 +192,14 @@ async def main():
         # 只处理当前子列表中的用户名
         for username in current_part:
             await process_twitter_user_updates(client, username)
-            await asyncio.sleep(random.randint(1, 10))
+            await asyncio.sleep(random.randint(30, 90))
 
         print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} 完成第 {current_part_index} 部分的用户处理...")
         save_sent_tweet_ids(sent_tweet_ids)
         cycle_count += 1
 
         # 在2400s-3600s之间随机选择睡眠时间
-        sleep_time = random.randint(2400, 3600)  # 3600秒 = 1小时, 7200秒 = 2小时
+        sleep_time = random.randint(3600 * 3, 3600 * 5)  # 3600秒 = 1小时, 7200秒 = 2小时
         print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} 睡眠 {sleep_time:.2f} 秒...")
         await asyncio.sleep(sleep_time)
 

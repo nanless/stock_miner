@@ -1,12 +1,16 @@
 import asyncio
 import requests
 from crawl4ai import AsyncWebCrawler, CacheMode
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import aiohttp
 from bs4 import BeautifulSoup
 import os
 import random
 import time
 import yfinance as yf
+
+# Ollama API配置
+OLLAMA_API_URL = "http://localhost:11434/api/chat"  # Ollama API地址
+OLLAMA_MODEL = "qwen2.5:14b"  # Ollama中的模型名称
 
 check_conditions = [
     "1. There is a definite transaction amount.",
@@ -34,7 +38,6 @@ check_conditions = [
 check_message = ", ".join(check_conditions)
 
 workdir = "./stock_push"
-model_name = "Qwen/Qwen2.5-7B-Instruct-AWQ"
 history_file = f"{workdir}/history_news.txt"
 markdowntext_file = f"{workdir}/news.md"
 
@@ -56,13 +59,22 @@ def send_message_to_lark(message):
     print("发送消息响应:", response.text)
     return response.json()
 
-model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    torch_dtype="auto",
-    device_map="auto",
-    cache_dir='/home/kemove/.cache/huggingface/hub'
-)
-tokenizer = AutoTokenizer.from_pretrained(model_name)
+async def query_ollama(messages):
+    """调用Ollama API进行文本生成"""
+    payload = {
+        "model": OLLAMA_MODEL,
+        "messages": messages,
+        "stream": False
+    }
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(OLLAMA_API_URL, json=payload) as response:
+            if response.status == 200:
+                result = await response.json()
+                return result["message"]["content"]
+            else:
+                error_text = await response.text()
+                raise Exception(f"Ollama API调用失败: {response.status}, {error_text}")
 
 def parse_news_row_trending(row):
     # 提取公司标志（logo），这里根据html中class为news-card-logo下的img标签的src属性获取，需根据实际情况调整
@@ -172,15 +184,7 @@ async def process_news_info(crawler, logo, symbol, exchange, title, link, time_i
                 {"role": "system", "content": "You are Qwen, a stock trading assistant!"},
                 {"role": "user", "content": "Is the news of a stock about any of the following conditions: " + check_message + ", according to the news? You should just answer yes or no in English, no others words are allowed, and the news is " + news_detail}
             ]
-            text = tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True
-            )
-            model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-            generated_ids = model.generate(**model_inputs, max_new_tokens=512)
-            generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
-            response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+            response = await query_ollama(messages)
             # print(f"AI回复：{response}")
             ###去掉所有符号
             response = ''.join(e for e in response if e.isalnum()).lower()
@@ -191,32 +195,14 @@ async def process_news_info(crawler, logo, symbol, exchange, title, link, time_i
                     {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
                     {"role": "user", "content": "Translate this title into Chinese, return only the translated text, discard all other texts: " + title}
                 ]
-                text = tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=False,
-                    add_generation_prompt=True
-                )
-                model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-                generated_ids = model.generate(**model_inputs, max_new_tokens=512)
-                generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
-                response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-                translated_title = response.strip()
+                translated_title = (await query_ollama(messages)).strip()
 
 
                 messages = [
                     {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
                     {"role": "user", "content": "Translate this news into Chinese and summarize to a shorter version, return only the translated shorter version, discard all other texts: " + news_detail}
                 ]
-                text = tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=False,
-                    add_generation_prompt=True
-                )
-                model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-                generated_ids = model.generate(**model_inputs, max_new_tokens=512)
-                generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
-                response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-                translated_news_detail = response.strip()
+                translated_news_detail = (await query_ollama(messages)).strip()
             
                 # 获取股票数据
                 stock = yf.Ticker(symbol)
@@ -229,16 +215,7 @@ async def process_news_info(crawler, logo, symbol, exchange, title, link, time_i
                         {"role": "system", "content": "You are Qwen, you are a great reader and translator!"},
                         {"role": "user", "content": "Translate this message into Chinese, return only the translated text, discard all other texts: " + longBusinessSummary}
                     ]
-                    text = tokenizer.apply_chat_template(
-                        messages,
-                        tokenize=False,
-                        add_generation_prompt=True
-                    )
-                    model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-                    generated_ids = model.generate(**model_inputs, max_new_tokens=512)
-                    generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
-                    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-                    longBusinessSummary_cn = response.strip()
+                    longBusinessSummary_cn = (await query_ollama(messages)).strip()
                 else:
                     longBusinessSummary_cn = "未知"
                 marketCap = info['marketCap'] if'marketCap' in info else "未知"

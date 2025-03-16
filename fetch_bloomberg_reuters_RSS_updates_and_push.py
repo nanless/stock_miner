@@ -4,7 +4,6 @@ import feedparser
 import time
 from datetime import datetime
 import json
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # Bloomberg RSSHub地址
 rsshub_urls = {
@@ -25,17 +24,8 @@ webhook_url = "https://open.feishu.cn/open-apis/bot/v2/hook/4151bf5e-8b82-4e9a-8
 # 用于存储已发送的文章ID
 sent_ids_file = "bloomberg_reuters_push/sent_ids.json"
 
-model_name = "Qwen/Qwen2.5-7B-Instruct-AWQ"
-cache_dir = '/home/kemove/.cache/huggingface/hub'
-
-# 加载qwen模型及分词器
-model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    torch_dtype="auto",
-    device_map="auto",
-    cache_dir=cache_dir
-)
-tokenizer = AutoTokenizer.from_pretrained(model_name)
+# Ollama API地址
+ollama_api_url = "http://localhost:11434/api/chat"
 
 # 加载已发送的文章ID
 def load_sent_ids():
@@ -52,17 +42,31 @@ def save_sent_ids(ids):
 
 sent_ids = load_sent_ids()
 
+async def translate_with_ollama(session, text):
+    """使用Ollama API翻译文本"""
+    payload = {
+        "model": "qwen2.5:14b",
+        "messages": [
+            {"role": "system", "content": "You are Qwen, a great reader and translator!"},
+            {"role": "user", "content": f"Translate this into Chinese, return only the translated text: {text}"}
+        ],
+        "stream": False
+    }
+    
+    try:
+        async with session.post(ollama_api_url, json=payload) as response:
+            if response.status == 200:
+                result = await response.json()
+                return result["message"]["content"].strip()
+            else:
+                print(f"{datetime.now()}: Ollama API请求失败: 状态码={response.status}, URL={ollama_api_url}")
+                return f"[翻译失败] {text}"
+    except Exception as e:
+        print(f"{datetime.now()}: Ollama API请求错误: {str(e)}, URL={ollama_api_url}")
+        return f"[翻译失败] {text}"
+
 async def send_to_feishu(session, title, link, timestamp, source):
-    messages = [
-        {"role": "system", "content": "You are Qwen, a great reader and translator!"},
-        {"role": "user", "content": "Translate this into Chinese, return only the translated text: " + title}
-    ]
-    text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-    generated_ids = model.generate(**model_inputs, max_new_tokens=512)
-    generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
-    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-    translated_title = response.strip()
+    translated_title = await translate_with_ollama(session, title)
     message = {
         "msg_type": "post",
         "content": {

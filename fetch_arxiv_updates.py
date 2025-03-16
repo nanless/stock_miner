@@ -1,7 +1,6 @@
 import time
 import requests
 import feedparser
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # 请将此处的 URL 替换为您实际的飞书机器人 Webhook 地址
 FEISHU_WEBHOOK = "https://open.feishu.cn/open-apis/bot/v2/hook/8e718ac2-e3dd-4125-b11b-f981961c5135"
@@ -9,16 +8,9 @@ FEISHU_WEBHOOK = "https://open.feishu.cn/open-apis/bot/v2/hook/8e718ac2-e3dd-412
 # 用于存储已处理文章的文件路径
 PROCESSED_FILE = "arxiv_push/processed_ids.txt"
 
-# 加载 Qwen2.5-7B-Instruct-AWQ 模型及分词器
-model_name = "Qwen/Qwen2.5-7B-Instruct-AWQ"
-cache_dir = '/home/kemove/.cache/huggingface/hub'
-model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    torch_dtype="auto",
-    device_map="auto",
-    cache_dir=cache_dir
-)
-tokenizer = AutoTokenizer.from_pretrained(model_name)
+# Ollama API配置
+OLLAMA_API_URL = "http://localhost:11434/api/chat"  # Ollama API地址
+OLLAMA_MODEL = "qwen2.5:14b"  # Ollama中的模型名称
 
 def load_processed_ids():
     """从文件中加载已处理的文章 ID 集合"""
@@ -56,19 +48,32 @@ def send_to_feishu(message):
 
 def translate_to_chinese(text):
     """
-    使用 Qwen2.5-7B-Instruct-AWQ 模型将英文文本翻译为中文
+    使用 Ollama API 调用 Qwen2.5 模型将英文文本翻译为中文
     """
     messages = [
         {"role": "system", "content": "You are Qwen, a great reader and translator!"},
         {"role": "user", "content": "Translate the following text into Chinese, return only the translated text: " + text}
     ]
-    text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-    generated_ids = model.generate(**model_inputs, max_new_tokens=512)
-    generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
-    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-    translated_text = response.strip()
-    return translated_text
+    
+    payload = {
+        "model": OLLAMA_MODEL,
+        "messages": messages,
+        "stream": False
+    }
+    
+    try:
+        response = requests.post(OLLAMA_API_URL, json=payload)
+        if response.status_code == 200:
+            result = response.json()
+            translated_text = result.get("message", {}).get("content", "").strip()
+            return translated_text
+        else:
+            error_text = response.text
+            print(f"Ollama API调用失败: {response.status_code}, {error_text}")
+            return "翻译失败"
+    except Exception as e:
+        print(f"翻译异常: {e}")
+        return "翻译失败"
 
 def get_pdf_url(article_id):
     """
