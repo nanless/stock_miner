@@ -1,6 +1,7 @@
 import time
 import requests
 import feedparser
+import os
 
 # 请将此处的 URL 替换为您实际的飞书机器人 Webhook 地址
 FEISHU_WEBHOOK = "https://open.feishu.cn/open-apis/bot/v2/hook/8e718ac2-e3dd-4125-b11b-f981961c5135"
@@ -11,6 +12,15 @@ PROCESSED_FILE = "arxiv_push/processed_ids.txt"
 # Ollama API配置
 OLLAMA_API_URL = "http://localhost:11434/api/chat"  # Ollama API地址
 OLLAMA_MODEL = "qwen2.5:14b"  # Ollama中的模型名称
+
+# 代理配置
+PROXIES = {
+    'http': 'http://127.0.0.1:7899',
+    'https': 'http://127.0.0.1:7899'
+} if os.getenv('USE_PROXY', 'false').lower() == 'true' else None
+
+# 请求超时设置（秒）
+REQUEST_TIMEOUT = 30
 
 def load_processed_ids():
     """从文件中加载已处理的文章 ID 集合"""
@@ -94,7 +104,7 @@ def check_arxiv_updates():
     query = "cat:cs.SD+OR+cat:eess.AS"
     url = f"http://export.arxiv.org/api/query?search_query={query}&start=0&max_results=100&sortBy=submittedDate&sortOrder=descending"
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=REQUEST_TIMEOUT, proxies=PROXIES)
     except Exception as e:
         print("获取 arXiv 数据异常：", e)
         return

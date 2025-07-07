@@ -9,3 +9,5 @@ arxiv_push
 zsxq_push
 twikit_push
 twikit_cookies.json
+fetch_arxiv_updates.log
+ollama.log
